@@ -71,6 +71,17 @@ The client (`src/lib/sec/client.ts`) is the only path to SEC and runs server-sid
 - 403 is never retried automatically. It returns a diagnosis: missing User-Agent, a lockout after exceeding 10 req/s, or a blocked hosting IP range.
 - **If the deployment host's egress is blocked by SEC** (common with shared serverless IP pools), move ingestion to a small separately hosted worker with a stable egress IP. That worker writes normalized datasets to Postgres or object storage, and the web app reads from there. The provider interface (`getCompanyDataset`) is the seam for that change.
 
+## Free market inputs
+
+| Input | Source | Notes |
+|---|---|---|
+| Risk-free rate | U.S. Treasury daily par yield curve CSV, 10-year tenor (`src/lib/rates/treasury.ts`) | Public domain. Fetched server-side, cached 6 h (failures 10 min). Falls back to the labeled illustrative 4.25% with the reason |
+| Dividends | SEC XBRL `CommonStockDividendsPerShareDeclared` / `…CashPaid` | Yield = latest fiscal-year DPS ÷ price; unavailable (not zero) when not reported or not current |
+| Price | User-entered per company, with an "as of" date (`prices` in the workspace store) | Persisted in the browser; overrides the dataset snapshot; always labeled "User-entered"; never presented as live |
+
+The price is workspace-level, not part of a saved model: `useModel` applies it as the engine's
+`referencePrice`, so every module and export uses the same value.
+
 ## Security
 
 - Provider keys and the SEC User-Agent are server-side environment variables; nothing is exposed to the browser.

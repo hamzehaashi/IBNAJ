@@ -30,8 +30,8 @@ import { useModel, useWorkspace } from "@/components/workspace/context";
 import { Badge, Button, cx, Tip } from "@/components/ui/primitives";
 import { downloadText, modelCsv, statementsCsv } from "@/lib/export";
 import { STATEMENT_EXPORT_LINES } from "@/components/workspace/statement-layout";
-import { dateLabel, usd } from "@/lib/format";
 import { CompanySearch } from "./CompanySearch";
+import { PriceEditor } from "@/components/workspace/PriceEditor";
 
 interface NavItem {
   href: string;
@@ -149,7 +149,7 @@ export function ThemeToggle() {
 
 function ExportMenu() {
   const { dataset } = useWorkspace();
-  const { state, result } = useModel();
+  const { state, valuation, result } = useModel();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -162,7 +162,7 @@ function ExportMenu() {
   const items = [
     { label: "Annual statements (CSV)", run: () => downloadText(`${t}-annual-statements.csv`, statementsCsv(dataset.annual, STATEMENT_EXPORT_LINES, meta)) },
     { label: "Quarterly statements (CSV)", run: () => downloadText(`${t}-quarterly-statements.csv`, statementsCsv(dataset.quarterly, STATEMENT_EXPORT_LINES, meta)) },
-    ...(state && result ? [{ label: "Forecast & DCF model (CSV)", run: () => downloadText(`${t}-dcf-model.csv`, modelCsv(meta.company, state.forecast, state.valuation, result)) }] : []),
+    ...(state && result ? [{ label: "Forecast & DCF model (CSV)", run: () => downloadText(`${t}-dcf-model.csv`, modelCsv(meta.company, state.forecast, valuation ?? state.valuation, result)) }] : []),
   ];
   return (
     <div ref={ref} className="relative">
@@ -205,7 +205,6 @@ function freshness(dataset: ReturnType<typeof useWorkspace>["dataset"]) {
 function TopBar() {
   const { dataset } = useWorkspace();
   const { save, undo, redo, canUndo, canRedo, dirty, savedAt } = useModel();
-  const m = dataset.market;
   const f = freshness(dataset);
 
   useEffect(() => {
@@ -252,17 +251,9 @@ function TopBar() {
         <span className="num text-[15px] font-semibold text-accent">{dataset.profile.ticker}</span>
         <span className="hidden truncate text-fg-2 lg:inline">{dataset.profile.name}</span>
       </div>
-      <div className="flex items-baseline gap-2">
-        {m ? (
-          <>
-            <span className="num text-[15px] font-semibold">{usd(m.price)}</span>
-            <Tip text={`${m.label}. As of ${dateLabel(m.asOf)} (${m.freshness.replace("_", "-")}, not live). Source: ${m.source}. Price change requires a licensed market-data feed (not configured).`} />
-          </>
-        ) : (
-          <span className="text-fg-2">
-            No price <Tip text="No licensed market-data provider is configured. Enter a reference price in the DCF module." />
-          </span>
-        )}
+      <div className="flex items-center gap-1 text-[13px]">
+        <PriceEditor compact />
+        <Tip text="Caldun has no licensed market-data feed, so prices are never live. Enter the price you want to use; it applies to every module and is stored in this browser. Price change requires a licensed feed." />
       </div>
       <Badge>{dataset.profile.reportingCurrency}</Badge>
       <Badge tone={f.tone} title={f.tip}>

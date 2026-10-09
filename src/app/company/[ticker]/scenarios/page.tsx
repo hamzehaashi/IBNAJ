@@ -18,13 +18,13 @@ const ADJ: { key: keyof ScenarioAdjustments; label: string; scale: number; suffi
 
 export default function ScenariosPage() {
   const { defaults, defaultsError } = useWorkspace();
-  const { state, update } = useModel();
+  const { state, valuation, update } = useModel();
 
   const summaries = useMemo(() => {
-    if (!defaults || !state) return [];
-    const inputs = { base: defaults.base, forecast: state.forecast, valuation: state.valuation };
+    if (!defaults || !state || !valuation) return [];
+    const inputs = { base: defaults.base, forecast: state.forecast, valuation };
     return state.scenarios.map((s) => ({ scenario: s, summary: runScenario(inputs, s.adjustments) }));
-  }, [defaults, state]);
+  }, [defaults, state, valuation]);
 
   if (defaultsError || !defaults || !state) return <Alert tone="neg" title="Scenarios unavailable">{defaultsError ?? "Loading model…"}</Alert>;
 

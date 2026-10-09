@@ -14,7 +14,7 @@ export default defineConfig({
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
-    // Demo mode: no SEC access in E2E.
-    env: { SEC_USER_AGENT: "", NEXT_TELEMETRY_DISABLED: "1" },
+    // Demo mode, no network lookups: E2E must be deterministic.
+    env: { SEC_USER_AGENT: "", CALDUN_DISABLE_TREASURY: "1", NEXT_TELEMETRY_DISABLED: "1" },
   },
 });

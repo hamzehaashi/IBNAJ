@@ -20,6 +20,7 @@ export type MetricId =
   | "incomeTax"
   | "netIncome"
   | "epsDiluted"
+  | "dividendsPerShare"
   | "dilutedShares"
   | "cash"
   | "shortTermInvestments"
@@ -98,6 +99,10 @@ export const METRICS: Record<MetricId, MetricDefinition> = {
   incomeTax: { id: "incomeTax", label: "Income tax", statement: "income", periodType: "duration", unit: "USD", additive: true, concepts: g("IncomeTaxExpenseBenefit") },
   netIncome: { id: "netIncome", label: "Net income", statement: "income", periodType: "duration", unit: "USD", additive: true, concepts: g("NetIncomeLoss", "ProfitLoss") },
   epsDiluted: { id: "epsDiluted", label: "Diluted EPS", statement: "income", periodType: "duration", unit: "USD/shares", additive: false, concepts: g("EarningsPerShareDiluted") },
+  dividendsPerShare: {
+    id: "dividendsPerShare", label: "Dividends declared per share", statement: "income", periodType: "duration", unit: "USD/shares", additive: false,
+    concepts: g("CommonStockDividendsPerShareDeclared", "CommonStockDividendsPerShareCashPaid"),
+  },
   dilutedShares: {
     id: "dilutedShares", label: "Diluted weighted-average shares", statement: "shares", periodType: "duration", unit: "shares", additive: false,
     concepts: g("WeightedAverageNumberOfDilutedSharesOutstanding"),

@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { CompanyDataset } from "@/lib/data/types";
+import type { CompanyDataset, MarketSnapshot } from "@/lib/data/types";
 import { deriveModelDefaults, type ModelDefaults } from "@/lib/finance/defaults";
 import { runDcf } from "@/lib/finance/dcf";
 import type { DcfResult } from "@/lib/finance/types";
@@ -9,6 +9,8 @@ import { initialScenarios, useWorkspaceStore, type ModelState } from "@/store/wo
 
 interface WorkspaceContextValue {
   dataset: CompanyDataset;
+  /** Price used everywhere in the workspace: a user-entered price if set, else the dataset snapshot (if any). */
+  price: MarketSnapshot | null;
   defaults: ModelDefaults | null;
   defaultsError: string | null;
   hydrated: boolean;
@@ -19,6 +21,15 @@ const Ctx = createContext<WorkspaceContextValue | null>(null);
 export function WorkspaceProvider({ dataset, children }: { dataset: CompanyDataset; children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const ticker = dataset.profile.ticker;
+  const userPrice = useWorkspaceStore((s) => (hydrated ? s.prices[ticker] : undefined));
+
+  const price: MarketSnapshot | null = useMemo(
+    () =>
+      userPrice
+        ? { price: userPrice.price, asOf: userPrice.asOf, currency: dataset.profile.reportingCurrency, source: "Entered by you", freshness: "user_entered", label: "User-entered price" }
+        : dataset.market,
+    [userPrice, dataset],
+  );
 
   const { defaults, defaultsError } = useMemo(() => {
     try {
@@ -26,7 +37,10 @@ export function WorkspaceProvider({ dataset, children }: { dataset: CompanyDatas
         defaults: deriveModelDefaults({
           annual: dataset.annual,
           quarterly: dataset.quarterly,
-          marketPrice: dataset.market?.price ?? null,
+          marketPrice: price?.price ?? null,
+          marketPriceSource: price ? `${price.label}, as of ${price.asOf}` : undefined,
+          riskFree: dataset.riskFree.ok ? dataset.riskFree.quote : null,
+          riskFreeNote: dataset.riskFree.ok ? undefined : dataset.riskFree.reason,
           valuationDate: dataset.meta.valuationDate,
         }),
         defaultsError: null,
@@ -34,7 +48,7 @@ export function WorkspaceProvider({ dataset, children }: { dataset: CompanyDatas
     } catch (e) {
       return { defaults: null, defaultsError: e instanceof Error ? e.message : String(e) };
     }
-  }, [dataset]);
+  }, [dataset, price]);
 
   useEffect(() => {
     let cancelled = false;
@@ -50,7 +64,7 @@ export function WorkspaceProvider({ dataset, children }: { dataset: CompanyDatas
     if (defaults) useWorkspaceStore.getState().ensure(ticker, { forecast: defaults.forecast, valuation: defaults.valuation, scenarios: initialScenarios() });
   }, [hydrated, ticker, defaults]);
 
-  const value = useMemo(() => ({ dataset, defaults, defaultsError, hydrated }), [dataset, defaults, defaultsError, hydrated]);
+  const value = useMemo(() => ({ dataset, price, defaults, defaultsError, hydrated }), [dataset, price, defaults, defaultsError, hydrated]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
@@ -68,7 +82,7 @@ const sameState = (a: ModelState | undefined, b: ModelState | undefined) => !!a 
  * formulas independently.
  */
 export function useModel() {
-  const { dataset, defaults } = useWorkspace();
+  const { dataset, defaults, price } = useWorkspace();
   const ticker = dataset.profile.ticker;
   const ws = useWorkspaceStore((s) => s.workspaces[ticker]);
   const saved = useWorkspaceStore((s) => s.saved[ticker]);
@@ -79,10 +93,12 @@ export function useModel() {
     [defaults],
   );
   const state = ws?.working ?? defaultState;
+  // The reference price is workspace-level (user-entered or snapshot), not part of a saved model.
+  const valuation = useMemo(() => (state ? { ...state.valuation, referencePrice: price?.price ?? null } : null), [state, price]);
 
   const result: DcfResult | null = useMemo(
-    () => (defaults && state ? runDcf(defaults.base, state.forecast, state.valuation) : null),
-    [defaults, state],
+    () => (defaults && state && valuation ? runDcf(defaults.base, state.forecast, valuation) : null),
+    [defaults, state, valuation],
   );
 
   const update = useCallback((fn: (s: ModelState) => ModelState, tag?: string) => store.getState().update(ticker, fn, tag), [store, ticker]);
@@ -91,6 +107,8 @@ export function useModel() {
     ticker,
     defaults,
     state,
+    /** Valuation assumptions with the workspace reference price applied (what the engine actually used). */
+    valuation,
     result,
     update,
     undo: () => store.getState().undo(ticker),

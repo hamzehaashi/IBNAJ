@@ -7,6 +7,7 @@ import type { LineId, StatementSet } from "@/lib/sec/statements";
 import { cagr } from "./forecast";
 import type { ForecastAssumptions, ModelBase, ValuationAssumptions } from "./types";
 import { marketDebtWeight } from "./wacc";
+import type { RiskFreeQuote } from "@/lib/rates/treasury";
 
 export type AssumptionSourceKind = "historical" | "reported" | "market" | "illustrative";
 
@@ -29,6 +30,11 @@ export interface DefaultsInput {
   /** Optional quarterly set: a balance sheet newer than the last annual one is preferred for the bridge. */
   quarterly?: StatementSet;
   marketPrice: number | null;
+  /** Describes where `marketPrice` came from (shown in the source label). */
+  marketPriceSource?: string;
+  /** Sourced risk-free rate; when absent the illustrative default is used and `riskFreeNote` explains why. */
+  riskFree?: RiskFreeQuote | null;
+  riskFreeNote?: string;
   /** ISO date of the valuation. */
   valuationDate: string;
   horizon?: number;
@@ -175,14 +181,16 @@ export function deriveModelDefaults(input: DefaultsInput): ModelDefaults {
   sources.debtWeight = wd !== null
     ? { kind: "market", description: "Debt ÷ (Debt + market capitalization at reference price)" }
     : { kind: "illustrative", description: "Illustrative 20% target debt weight" };
-  sources.riskFreeRate = { kind: "illustrative", description: "Illustrative 4.25% — replace with a sourced Treasury yield" };
+  sources.riskFreeRate = input.riskFree
+    ? { kind: "market", description: `${input.riskFree.tenor.replace(" Yr", "-year")} U.S. Treasury par yield, ${input.riskFree.asOf} (${input.riskFree.source})` }
+    : { kind: "illustrative", description: `Illustrative 4.25%${input.riskFreeNote ? ` — ${input.riskFreeNote}` : ""}` };
   sources.beta = { kind: "illustrative", description: "Illustrative 1.00 — no licensed beta source configured" };
   sources.equityRiskPremium = { kind: "illustrative", description: "Illustrative 5.0% equity risk premium" };
   sources.marginalTaxRate = { kind: "illustrative", description: "21% US federal statutory rate" };
   sources.terminalGrowth = { kind: "illustrative", description: "Illustrative 2.5% long-run growth" };
   sources.exitMultiple = { kind: "illustrative", description: "Illustrative 12.0x EV/EBITDA — not derived from peers" };
   sources.referencePrice = input.marketPrice !== null
-    ? { kind: "market", description: "Reference price from market data snapshot" }
+    ? { kind: "market", description: input.marketPriceSource ?? "Reference price from market data snapshot" }
     : { kind: "illustrative", description: "No market price available — enter a reference price" };
 
   // ---------------- Stub period: share of forecast year 1 remaining after the valuation date.
@@ -193,7 +201,7 @@ export function deriveModelDefaults(input: DefaultsInput): ModelDefaults {
 
   const valuation: ValuationAssumptions = {
     wacc: {
-      riskFreeRate: ILLUSTRATIVE.riskFreeRate,
+      riskFreeRate: input.riskFree?.rate ?? ILLUSTRATIVE.riskFreeRate,
       beta: ILLUSTRATIVE.beta,
       equityRiskPremium: ILLUSTRATIVE.equityRiskPremium,
       preTaxCostOfDebt: kdOk ? impliedKd! : ILLUSTRATIVE.preTaxCostOfDebt,

@@ -1,5 +1,6 @@
 import type { StatementSet } from "@/lib/sec/statements";
 import type { ValidationIssue } from "@/lib/sec/validation";
+import type { RiskFreeResult } from "@/lib/rates/treasury";
 
 export type DataMode = "demo" | "sec";
 
@@ -25,7 +26,7 @@ export interface MarketSnapshot {
   currency: string;
   source: string;
   /** Never "live": Caldun has no real-time feed. */
-  freshness: "end_of_day" | "delayed" | "synthetic";
+  freshness: "end_of_day" | "delayed" | "synthetic" | "user_entered";
   label: string;
 }
 
@@ -47,6 +48,8 @@ export interface CompanyDataset {
   quarterly: StatementSet;
   validation: ValidationIssue[];
   market: MarketSnapshot | null;
+  /** Sourced risk-free rate (U.S. Treasury), or why it is unavailable. */
+  riskFree: RiskFreeResult;
   meta: DatasetMeta;
 }
 

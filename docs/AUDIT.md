@@ -50,7 +50,8 @@ These defect classes were named in the brief or are common in SEC-based tools. E
 
 ## Known limitations (not yet addressed)
 
-- No licensed market data: price chart, beta, 52-week range, volume and dividend yield are unavailable.
+- No licensed market data: price chart, beta, 52-week range and volume are unavailable. Prices come from a user-entered value (or the synthetic snapshot in demo mode). Dividend yield uses SEC-reported dividends per share; the risk-free rate uses the U.S. Treasury 10-year par yield.
+- The Treasury yield endpoint (`home.treasury.gov`) is blocked by the build sandbox, like SEC. The parser and fetch logic are tested against the published CSV format; the live endpoint has not been verified.
 - Persistence is browser-local (localStorage). No accounts, database or server persistence (Phase 4).
 - Server cache is in-process (per instance). It needs Redis or equivalent before multi-instance production.
 - Tag mapping covers common US-GAAP concepts only; IFRS filers (20-F/40-F) are not mapped.

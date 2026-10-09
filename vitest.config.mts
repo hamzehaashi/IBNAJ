@@ -6,5 +6,7 @@ export default defineConfig({
   test: {
     include: ["src/**/*.test.ts", "tests/unit/**/*.test.ts"],
     environment: "node",
+    // Unit tests never reach the network; tests that exercise the Treasury client inject fetch and re-enable it.
+    env: { CALDUN_DISABLE_TREASURY: "1" },
   },
 });

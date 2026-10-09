@@ -13,6 +13,7 @@ import { buildStatementSet } from "@/lib/sec/statements";
 import { validateStatements } from "@/lib/sec/validation";
 import { padCik, SEC_ENDPOINTS, SEC_TTL, SecClient, SecConfigError, SecHttpError } from "@/lib/sec/client";
 import type { CompanyFactsJson, CompanyTickersJson, SubmissionsJson } from "@/lib/sec/types";
+import { getRiskFreeRate } from "@/lib/rates/treasury";
 import type { DemoFixture } from "./fixture-types";
 import aapl from "./fixtures/aapl.json";
 import dhr from "./fixtures/dhr.json";
@@ -66,7 +67,7 @@ function profileFrom(sub: SubmissionsJson, ticker: string): CompanyProfile {
   };
 }
 
-function buildDataset(cf: CompanyFactsJson, profile: CompanyProfile): Omit<CompanyDataset, "market" | "meta"> {
+function buildDataset(cf: CompanyFactsJson, profile: CompanyProfile): Omit<CompanyDataset, "market" | "meta" | "riskFree"> {
   const annual = buildStatementSet(cf, "annual");
   const quarterly = buildStatementSet(cf, "quarterly");
   return { profile, annual, quarterly, validation: validateStatements(annual, cf) };
@@ -83,12 +84,17 @@ export async function getCompanyDataset(rawTicker: string): Promise<DatasetResul
   const key = `${mode}:${ticker}`;
   const hit = datasetCache.get(key);
   if (hit && Date.now() - hit.at < DATASET_TTL_MS) return hit.result;
-  const result = mode === "demo" ? demoDataset(ticker) : await secDataset(ticker);
-  if (result.ok) datasetCache.set(key, { at: Date.now(), result });
+  const [base, riskFree] = await Promise.all([mode === "demo" ? demoDataset(ticker) : secDataset(ticker), getRiskFreeRate()]);
+  if (!base.ok) return base;
+  const result: DatasetResult = { ok: true, dataset: { ...base.dataset, riskFree } };
+  // Cache only fully sourced datasets so a transient Treasury failure is retried on the next request.
+  if (riskFree.ok) datasetCache.set(key, { at: Date.now(), result });
   return result;
 }
 
-function demoDataset(ticker: string): DatasetResult {
+type BaseResult = { ok: true; dataset: Omit<CompanyDataset, "riskFree"> } | Extract<DatasetResult, { ok: false }>;
+
+function demoDataset(ticker: string): BaseResult {
   const f = FIXTURES[ticker];
   if (!f) {
     return {
@@ -115,7 +121,7 @@ async function resolveCik(client: SecClient, ticker: string): Promise<{ cik: str
   return row ? { cik: padCik(row.cik_str), title: row.title } : null;
 }
 
-async function secDataset(ticker: string): Promise<DatasetResult> {
+async function secDataset(ticker: string): Promise<BaseResult> {
   try {
     const client = getSecClient();
     const id = await resolveCik(client, ticker);
