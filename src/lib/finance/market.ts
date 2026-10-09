@@ -17,6 +17,7 @@ export interface MarketMetrics {
   enterpriseValue: Derived;
   pe: Derived;
   evEbitda: Derived;
+  dividendYield: Derived;
 }
 
 function latest(set: StatementSet, line: LineId): { value: number; label: string; end: string } | null {
@@ -75,5 +76,14 @@ export function marketMetrics(price: number | null, annual: StatementSet, quarte
     : ebitda.value <= 0 ? { value: null, formula: "EV ÷ EBITDA (latest fiscal year)", reason: "Not meaningful: EBITDA is zero or negative." }
     : { value: enterpriseValue.value / ebitda.value, formula: "EV ÷ EBITDA (latest fiscal year)", basis: ebitda.label };
 
-  return { sharesOutstanding, marketCap, enterpriseValue, pe, evEbitda };
+  const dpsFormula = "Dividends declared per share (latest fiscal year) ÷ price";
+  const dps = latest(annual, "dividendsPerShare");
+  const lastAnnual = annual.periods[annual.periods.length - 1];
+  const dividendYield: Derived =
+    price === null ? { value: null, formula: dpsFormula, reason: noPrice }
+    : !dps ? { value: null, formula: dpsFormula, reason: "No dividends per share reported in filings (the company may not pay a dividend)." }
+    : dps.label !== lastAnnual?.label ? { value: null, formula: dpsFormula, reason: `Latest reported dividend is for ${dps.label}, not the latest fiscal year; not treated as current.` }
+    : { value: dps.value / price, formula: dpsFormula, basis: `${dps.label} dividends of $${dps.value.toFixed(2)}/share` };
+
+  return { sharesOutstanding, marketCap, enterpriseValue, pe, evEbitda, dividendYield };
 }

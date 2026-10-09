@@ -46,6 +46,8 @@ interface Spec {
   capexPct: number;
   sbcPct: number;
   taxRate: number;
+  /** Dividends declared as a share of net income; null = company pays no dividend (tag not reported). */
+  payout: number | null;
   interest: number | null;
   shares0: number;
   shareDrift: number;
@@ -205,7 +207,7 @@ class FactSink {
   }
 }
 
-const PER_SHARE = new Set(["EarningsPerShareDiluted"]);
+const PER_SHARE = new Set(["EarningsPerShareDiluted", "CommonStockDividendsPerShareDeclared"]);
 const SHARE_UNITS = new Set(["WeightedAverageNumberOfDilutedSharesOutstanding"]);
 const CF_TAGS = new Set([
   "DepreciationDepletionAndAmortization",
@@ -248,6 +250,10 @@ function generate(spec: Spec): DemoFixture {
     if (flows.NetIncomeLoss !== undefined && !omitted("EarningsPerShareDiluted", fyEnd)) {
       const eps = Math.round((flows.NetIncomeLoss! / flows.WeightedAverageNumberOfDilutedSharesOutstanding!) * 100) / 100;
       sink.add("us-gaap", "EarningsPerShareDiluted", "USD/shares", { start, end, val: eps, ...filing });
+    }
+    if (flows.NetIncomeLoss !== undefined && spec.payout !== null && !omitted("CommonStockDividendsPerShareDeclared", fyEnd)) {
+      const dps = Math.round(((flows.NetIncomeLoss * spec.payout) / flows.WeightedAverageNumberOfDilutedSharesOutstanding!) * 100) / 100;
+      sink.add("us-gaap", "CommonStockDividendsPerShareDeclared", "USD/shares", { start, end, val: dps, ...filing });
     }
   };
   const emitBs = (bs: Record<string, number>, instant: string, fyEnd: string, filing: { accn: string; fy: number; fp: string; form: string; filed: string }) => {
@@ -364,7 +370,7 @@ const SPECS: Spec[] = [
     fyEnds: ["2019-12-31", "2020-12-31", "2021-12-31", "2022-12-31", "2023-12-31", "2024-12-31", "2025-12-31", "2026-12-31"],
     weekBased: false, quarterlyYears: 2,
     revenue0: 21000, growth: [0.2, 0.3, 0.06, -0.1, -0.01, 0.03, 0.04], grossMargin: 0.59, sgaPct: 0.3, rndPct: 0.065,
-    daPct: 0.11, capexPct: 0.045, sbcPct: 0.012, taxRate: 0.17, interest: 260, shares0: 735, shareDrift: -0.003,
+    daPct: 0.11, capexPct: 0.045, sbcPct: 0.012, taxRate: 0.17, payout: 0.12, interest: 260, shares0: 735, shareDrift: -0.003,
     cash0: 6000, debtLong: 18500, debtCurrent: 1200, goodwill: 41000, price: 214.5,
   },
   {
@@ -373,7 +379,7 @@ const SPECS: Spec[] = [
     fyEnds: ["2020-06-30", "2021-06-30", "2022-06-30", "2023-06-30", "2024-06-30", "2025-06-30", "2026-06-30", "2027-06-30"],
     weekBased: false, quarterlyYears: 2,
     revenue0: 168000, growth: [0.18, 0.18, 0.07, 0.16, 0.15, 0.14, 0.13], grossMargin: 0.69, sgaPct: 0.12, rndPct: 0.13,
-    daPct: 0.09, capexPct: 0.16, sbcPct: 0.05, taxRate: 0.18, interest: 2300, shares0: 7600, shareDrift: -0.004,
+    daPct: 0.09, capexPct: 0.16, sbcPct: 0.05, taxRate: 0.18, payout: 0.25, interest: 2300, shares0: 7600, shareDrift: -0.004,
     cash0: 14000, debtLong: 50000, debtCurrent: 8000, goodwill: 50000, price: 498.2,
   },
   {
@@ -383,7 +389,7 @@ const SPECS: Spec[] = [
     fyEnds: ["2019-09-28", "2020-09-26", "2021-09-25", "2022-09-24", "2023-09-30", "2024-09-28", "2025-09-27", "2026-09-26"],
     weekBased: true, quarterlyYears: 2, revenueTag: "RevenueFromContractWithCustomerExcludingAssessedTax",
     revenue0: 275000, growth: [0.05, 0.33, 0.08, -0.03, 0.02, 0.06, 0.05], grossMargin: 0.43, sgaPct: 0.067, rndPct: 0.075,
-    daPct: 0.03, capexPct: 0.03, sbcPct: 0.03, taxRate: 0.16, interest: 2900, shares0: 17500, shareDrift: -0.03,
+    daPct: 0.03, capexPct: 0.03, sbcPct: 0.03, taxRate: 0.16, payout: 0.15, interest: 2900, shares0: 17500, shareDrift: -0.03,
     cash0: 38000, debtLong: 95000, debtCurrent: 10000, goodwill: 0, price: 252.1,
   },
   {
@@ -392,7 +398,7 @@ const SPECS: Spec[] = [
     fyEnds: ["2019-12-31", "2020-12-31", "2021-12-31", "2022-12-31", "2023-12-31", "2024-12-31", "2025-12-31", "2026-12-31"],
     weekBased: false, quarterlyYears: 1,
     revenue0: 1200, growth: [0.25, 0.22, 0.18, 0.15, 0.12, 0.11, 0.1], grossMargin: 0.72, sgaPct: 0.38, rndPct: null,
-    daPct: 0.05, capexPct: 0.04, sbcPct: 0.06, taxRate: 0.22, interest: null, shares0: 140, shareDrift: 0.01,
+    daPct: 0.05, capexPct: 0.04, sbcPct: 0.06, taxRate: 0.22, payout: null, interest: null, shares0: 140, shareDrift: 0.01,
     cash0: 300, debtLong: 0, debtCurrent: 0, goodwill: 150, price: 48.75,
     // Services company: never reports cost of revenue, gross profit, R&D, inventory or interest expense.
     omit: ["CostOfRevenue", "GrossProfit", "ResearchAndDevelopmentExpense", "InventoryNet", "InterestExpense", "DebtCurrent"],
@@ -405,7 +411,7 @@ const SPECS: Spec[] = [
     fyEnds: ["2019-12-31", "2020-12-31", "2021-12-31", "2022-12-31", "2023-12-31", "2024-12-31", "2025-12-31", "2026-12-31"],
     weekBased: false, quarterlyYears: 1, revenueTag: "Revenues",
     revenue0: 5400, growth: [0.04, 0.05, 0.03, 0.02, 0.03, 0.03, 0.03], grossMargin: 0.34, sgaPct: 0.17, rndPct: 0.02,
-    daPct: 0.05, capexPct: 0.05, sbcPct: 0.008, taxRate: 0.24, interest: 120, shares0: 210, shareDrift: 0,
+    daPct: 0.05, capexPct: 0.05, sbcPct: 0.008, taxRate: 0.24, payout: 0.35, interest: 120, shares0: 210, shareDrift: 0,
     cash0: 600, debtLong: 2500, debtCurrent: 200, goodwill: 1800, price: 61.3,
     restate: { fyEnd: "2023-12-31", revenueFactor: 0.96, amendmentFiled: "2024-08-15" },
   },

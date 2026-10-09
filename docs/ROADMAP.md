@@ -17,8 +17,14 @@ until the previous phase's core acceptance tests pass.
 Delivered: app shell, global search (⌘K), overview, statements (annual/quarterly, common-size,
 YoY, source inspector, CSV), ratio analysis, responsive layout, dark/light themes.
 
+Delivered (free data, step 1 of market data):
+- [x] Sourced risk-free rate: 10-year U.S. Treasury par yield (public domain), with illustrative fallback and reason
+- [x] Dividend yield from SEC-reported dividends declared per share
+- [x] User-entered price per company (labeled, dated, persisted locally) driving market cap, EV, multiples, dividend yield and DCF upside
+
 Remaining:
-- [ ] **Licensed market-data provider** (price, history, beta, volume, dividends). Evaluate licensing, redistribution and cost first. Unblocks the price chart (1D–MAX, crosshair, index comparison).
+- [ ] **Licensed market-data provider with display rights** (price history, beta, volume, 52-week range). Unblocks the price chart (1D–MAX, crosshair, index comparison). Recommended first candidate: Tiingo commercial agreement.
+- [ ] Verify the Treasury endpoint from a deployment (blocked from the build sandbox).
 - [ ] Verify live SEC mode end to end from a deployment whose egress SEC accepts.
 - [ ] Business description extraction from 10-K Item 1.
 - [ ] TanStack Table (column resizing, virtualization) for long quarterly histories.

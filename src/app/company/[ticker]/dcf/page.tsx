@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useModel, useWorkspace } from "@/components/workspace/context";
 import { NumberCell, SliderField } from "@/components/workspace/inputs";
 import { SensitivityTable } from "@/components/workspace/SensitivityTable";
+import { PriceEditor } from "@/components/workspace/PriceEditor";
 import { Alert, Badge, Card, Kpi, Segmented, Tip } from "@/components/ui/primitives";
 import type { AssumptionSource } from "@/lib/finance/defaults";
 import type { PerYearKey } from "@/lib/finance/forecast";
@@ -25,13 +26,13 @@ const uniform = (xs: number[]) => xs.every((x) => Math.abs(x - xs[0]!) < 1e-12);
 
 export default function DcfPage() {
   const { dataset, defaults, defaultsError } = useWorkspace();
-  const { state, result, update } = useModel();
-  const inputs = useMemo(() => (defaults && state ? { base: defaults.base, forecast: state.forecast, valuation: state.valuation } : null), [defaults, state]);
+  const { state, valuation, result, update } = useModel();
+  const inputs = useMemo(() => (defaults && state && valuation ? { base: defaults.base, forecast: state.forecast, valuation } : null), [defaults, state, valuation]);
 
-  if (defaultsError || !defaults || !state || !result || !inputs) {
+  if (defaultsError || !defaults || !state || !valuation || !result || !inputs) {
     return <Alert tone="neg" title="DCF unavailable">{defaultsError ?? "Loading model…"}</Alert>;
   }
-  const v = state.valuation;
+  const v = valuation;
   const f = state.forecast;
   const src = defaults.sources;
   const computed = computeWacc(v.wacc);
@@ -79,7 +80,9 @@ export default function DcfPage() {
           <div className="flex items-center gap-1 text-[11px] uppercase tracking-wide text-fg-2">
             Reference price <SourceBadge s={src.referencePrice} />
           </div>
-          <NumberCell value={v.referencePrice ?? Number.NaN} onCommit={(x) => setV((val) => ({ ...val, referencePrice: x }))} scale={1} decimals={2} suffix="$" label="Reference share price" min={0.01} className="mt-1 w-28" testId="reference-price" />
+          <div className="mt-1 text-[13px]">
+            <PriceEditor compact />
+          </div>
         </div>
         <Kpi label="Implied upside" tone={result.ok && result.upside !== null ? (result.upside >= 0 ? "pos" : "neg") : undefined} value={result.ok ? signedPct(result.upside) : "—"} sub={v.referencePrice === null ? "Enter a reference price" : undefined} />
         <Kpi label="Terminal value share" value={result.ok ? pct(result.terminalShareOfEv, 0) : "—"} tip="PV of terminal value ÷ enterprise value." />

@@ -7,6 +7,7 @@ import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, T
 import { useModel, useWorkspace } from "@/components/workspace/context";
 import { Badge, Card, EmptyState, Kpi, Tip } from "@/components/ui/primitives";
 import { marketMetrics, type Derived } from "@/lib/finance/market";
+import { freshnessLabel, PriceEditor } from "@/components/workspace/PriceEditor";
 import type { LineId } from "@/lib/sec/statements";
 import { compactUsd, dateLabel, millions, multiple, pct, shares, signedPct, usd } from "@/lib/format";
 
@@ -38,9 +39,9 @@ const Unavailable = ({ what }: { what: string }) => (
 );
 
 export default function OverviewPage() {
-  const { dataset } = useWorkspace();
+  const { dataset, price: market } = useWorkspace();
   const { result, state } = useModel();
-  const { profile, annual, quarterly, market } = dataset;
+  const { profile, annual, quarterly, riskFree } = dataset;
   const mm = useMemo(() => marketMetrics(market?.price ?? null, annual, quarterly), [market, annual, quarterly]);
   const base = `/company/${profile.ticker}`;
 
@@ -76,8 +77,8 @@ export default function OverviewPage() {
         <Kpi
           label="Reference price"
           value={market ? usd(market.price) : "—"}
-          sub={market ? `${market.freshness === "synthetic" ? "Synthetic" : "End-of-day"} · ${dateLabel(market.asOf)}` : "No market data provider"}
-          tip={market ? `${market.label}. Not live.` : "Enter a reference price in the DCF module."}
+          sub={market ? `${freshnessLabel(market.freshness)} · ${dateLabel(market.asOf)}` : "Enter a price in the top bar"}
+          tip={market ? `${market.label}. ${market.source}. Not live.` : "No licensed market-data feed is configured. Enter the price you want to use."}
         />
         <Kpi label="Market cap" value={compactUsd(mm.marketCap.value)} sub={mm.marketCap.basis ?? mm.marketCap.reason} tip={mm.marketCap.formula} />
         <Kpi label="Revenue" value={compactUsd(v("revenue"))} sub={annual.periods[last]?.label} />
@@ -110,10 +111,11 @@ export default function OverviewPage() {
           <p className="mt-3 text-[12px] text-fg-2">Business description: not available from current data sources (filing text extraction is planned).</p>
         </Card>
 
-        <Card title="Market data" className="xl:col-span-1" actions={market ? <Badge tone={market.freshness === "synthetic" ? "warn" : "neutral"}>{market.freshness === "synthetic" ? "Synthetic" : "Delayed"}</Badge> : undefined}>
+        <Card title="Market data" className="xl:col-span-1">
           <dl>
-            <Field label="Reference price">{market ? <span className="num">{usd(market.price)}</span> : <Unavailable what="Price" />}</Field>
-            <Field label="Price as of">{market ? dateLabel(market.asOf) : "—"}</Field>
+            <Field label="Price" tip="The price Caldun uses for market cap, multiples, dividend yield and DCF upside. Never live.">
+              <PriceEditor />
+            </Field>
             <Field label="Shares outstanding">
               <DerivedValue d={mm.sharesOutstanding} fmt={shares} />
             </Field>
@@ -132,9 +134,22 @@ export default function OverviewPage() {
             <Field label="52-week high / low"><Unavailable what="52-week range" /></Field>
             <Field label="Volume"><Unavailable what="Trading volume" /></Field>
             <Field label="Beta" tip="Sensitivity of the stock's returns to the market."><Unavailable what="Beta" /></Field>
-            <Field label="Dividend yield"><Unavailable what="Dividend yield" /></Field>
+            <Field label="Dividend yield" tip="Dividends declared per share in the latest fiscal year (from filings) divided by the price.">
+              <DerivedValue d={mm.dividendYield} fmt={(x) => pct(x, 2)} />
+            </Field>
+            <Field label="Risk-free rate (10-yr Treasury)" tip="Used as the risk-free rate in the WACC.">
+              {riskFree.ok ? (
+                <span className="num" data-testid="risk-free">
+                  {pct(riskFree.quote.rate, 2)} <Tip text={`${riskFree.quote.source}, ${riskFree.quote.tenor} par yield as of ${dateLabel(riskFree.quote.asOf)}. Public-domain data.`} />
+                </span>
+              ) : (
+                <span className="text-fg-2" data-testid="risk-free">
+                  Unavailable <Tip text={`${riskFree.reason} The WACC uses an illustrative 4.25% instead.`} />
+                </span>
+              )}
+            </Field>
           </dl>
-          <p className="mt-2 text-[11px] text-fg-2">Source: {market?.source ?? "—"}. Fundamentals: {dataset.meta.source}.</p>
+          <p className="mt-2 text-[11px] text-fg-2">Price: {market ? `${market.label} (${market.source})` : "none set"}. Fundamentals and dividends: {dataset.meta.source}.</p>
         </Card>
 
         <Card title="Price history" className="xl:col-span-1">
