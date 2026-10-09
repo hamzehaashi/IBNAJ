@@ -1,0 +1,10 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+# Set SEC_USER_AGENT ("<App> <contact email>") in Netlify environment settings to enable SEC mode.
+# If SEC rejects Netlify's egress IPs (HTTP 403), see docs/ARCHITECTURE.md § "SEC access and the 403 problem".

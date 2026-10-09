@@ -1,0 +1,130 @@
+@import "tailwindcss";
+
+@custom-variant light (&:where([data-theme="light"], [data-theme="light"] *));
+
+:root {
+  --bg: #0b0f17;
+  --bg-2: #111827;
+  --card: #172033;
+  --border: #253047;
+  --text: #f8fafc;
+  --text-2: #94a3b8;
+  --accent: #38bdf8;
+  --valuation: #00f2fe;
+  --pos: #10b981;
+  --neg: #ef4444;
+  --warn: #f59e0b;
+  --input-bg: #0f1a2d;
+  --input-text: #7dd3fc;
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --bg: #f8fafc;
+  --bg-2: #eef2f7;
+  --card: #ffffff;
+  --border: #d5dde8;
+  --text: #0b1220;
+  --text-2: #526079;
+  --accent: #0284c7;
+  --valuation: #0891b2;
+  --pos: #047857;
+  --neg: #b91c1c;
+  --warn: #b45309;
+  --input-bg: #eff8ff;
+  --input-text: #0369a1;
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-2: var(--bg-2);
+  --color-card: var(--card);
+  --color-line: var(--border);
+  --color-fg: var(--text);
+  --color-fg-2: var(--text-2);
+  --color-accent: var(--accent);
+  --color-valuation: var(--valuation);
+  --color-pos: var(--pos);
+  --color-neg: var(--neg);
+  --color-warn: var(--warn);
+  --color-input: var(--input-bg);
+  --color-input-fg: var(--input-text);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Financial grid */
+.fin-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+.fin-table th,
+.fin-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 4px 10px;
+}
+.fin-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg-2);
+  color: var(--text-2);
+  font-weight: 500;
+  text-align: right;
+}
+.fin-table thead th:first-child,
+.fin-table tbody th {
+  text-align: left;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--card);
+  font-weight: 400;
+}
+.fin-table thead th:first-child {
+  z-index: 3;
+  background: var(--bg-2);
+}
+.fin-table td {
+  text-align: right;
+}
+.fin-table tr:hover td,
+.fin-table tr:hover th {
+  background-color: color-mix(in srgb, var(--accent) 6%, var(--card));
+}
+
+input[type="range"] {
+  accent-color: var(--accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
