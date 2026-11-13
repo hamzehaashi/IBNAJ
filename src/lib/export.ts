@@ -22,11 +22,10 @@ const CALC_LABELS: Record<string, string> = {
 };
 export const lineLabel = (id: LineId) => (id in METRICS ? METRICS[id as MetricId].label : (CALC_LABELS[id] ?? id));
 
-export function statementsCsv(set: StatementSet, lines: LineId[], meta: { company: string; source: string; notice?: string }): string {
+export function statementsCsv(set: StatementSet, lines: LineId[], meta: { company: string; source: string }): string {
   const rows: unknown[][] = [
     [`${meta.company} — ${set.frequency} financial statements`],
     [`Source: ${meta.source}`],
-    ...(meta.notice ? [[meta.notice]] : []),
     ["Units: USD (absolute) unless stated; shares in absolute count"],
     [],
     ["Line", ...set.periods.map((p) => `${p.label} (${p.start} to ${p.end})`), ...set.periods.map((p) => `${p.label} status`)],

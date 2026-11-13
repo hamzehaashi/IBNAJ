@@ -1,5 +1,5 @@
 /**
- * Deterministic generator for Caldun demonstration fixtures.
+ * Deterministic generator for Caldun TEST fixtures (used only by automated tests).
  *
  * Output files mimic the STRUCTURE of SEC EDGAR `companyfacts` + `submissions` payloads
  * (10-K comparatives, filing-level fy/fp, 10-Q YTD cash flows, 52/53-week years,
@@ -13,9 +13,9 @@
 import { writeFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import type { CompanyFactsJson, RawFactObservation, SubmissionsJson } from "../src/lib/sec/types";
-import type { DemoFixture } from "../src/lib/data/fixture-types";
+import type { TestFixture } from "../tests/fixtures/types";
 
-const OUT_DIR = path.resolve(__dirname, "../src/lib/data/fixtures");
+const OUT_DIR = path.resolve(__dirname, "../tests/fixtures/sec");
 /** Fixture "knowledge date": filings dated after this are not emitted. */
 const AS_OF = "2026-10-02";
 
@@ -225,7 +225,7 @@ function unitFor(tag: string) {
   return "USD";
 }
 
-function generate(spec: Spec): DemoFixture {
+function generate(spec: Spec): TestFixture {
   const { years, openingBs } = buildYears(spec);
   const sink = new FactSink();
   let seq = 1;
@@ -354,11 +354,10 @@ function generate(spec: Spec): DemoFixture {
   };
   return {
     notice:
-      "SYNTHETIC DEMONSTRATION DATA. Structure modeled on SEC EDGAR companyfacts; every numeric value is generated and is NOT the reported financial data of the named company.",
+      "SYNTHETIC TEST DATA. Structure modeled on SEC EDGAR companyfacts; every numeric value is generated and is NOT the reported financial data of the named company.",
     ticker: spec.ticker,
     profile,
     companyfacts,
-    demoMarket: { price: spec.price, asOf: "2026-10-02", currency: "USD", label: "Synthetic demo reference price" },
   };
 }
 

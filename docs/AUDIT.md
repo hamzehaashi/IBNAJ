@@ -45,12 +45,12 @@ These defect classes were named in the brief or are common in SEC-based tools. E
 
 - `src/lib/sec/*`: SEC client, tag catalog, normalization, statements, validation (framework-free)
 - `src/lib/finance/*`: forecast, WACC, DCF, sensitivity, scenarios, ratios, market metrics, defaults (pure functions)
-- `src/lib/data/provider.ts`: mode selection (SEC vs demo) and dataset assembly
+- `src/lib/data/provider.ts`: SEC-only dataset assembly (no synthetic fallback)
 - `src/store/workspace.ts`: per-company working state, undo/redo, save
 
 ## Known limitations (not yet addressed)
 
-- No licensed market data: price chart, beta, 52-week range and volume are unavailable. Prices come from a user-entered value (or the synthetic snapshot in demo mode). Dividend yield uses SEC-reported dividends per share; the risk-free rate uses the U.S. Treasury 10-year par yield.
+- No licensed market data: price chart, beta, 52-week range and volume are unavailable. Prices come from a user-entered value. Dividend yield uses SEC-reported dividends per share; the risk-free rate uses the U.S. Treasury 10-year par yield.
 - The Treasury yield endpoint (`home.treasury.gov`) is blocked by the build sandbox, like SEC. The parser and fetch logic are tested against the published CSV format; the live endpoint has not been verified.
 - Persistence is browser-local (localStorage). No accounts, database or server persistence (Phase 4).
 - Server cache is in-process (per instance). It needs Redis or equivalent before multi-instance production.
@@ -58,3 +58,28 @@ These defect classes were named in the brief or are common in SEC-based tools. E
 - Derived Q4 values can combine a restated annual figure with an unrestated YTD figure; the components are visible in provenance.
 - EV in the overview excludes preferred equity (not yet mapped from XBRL).
 - Dev-only advisory: `braces` (via `eslint-config-next` → `fast-glob`) has a high-severity advisory. It affects lint tooling only, not runtime bundles.
+
+## Real SEC data (2026-11-13)
+
+Synthetic data was removed from the application: SEC EDGAR is the only data source, and the
+generated fixtures moved to `tests/fixtures/` for automated tests only. End-to-end tests run the
+app's real SEC code path against a local mock of the SEC endpoints.
+
+The pipeline was then run on live filings (DHR, MSFT, AAPL, NVDA, WMT, KO, TSLA, JPM, BRK-B).
+Revenue for MSFT (FY2022–24) and AAPL (FY2022–24) matches their published annual reports; DHR's
+earlier years show the figures recast for the Veralto spin-off, marked as restated. Defects the
+synthetic fixtures could not reveal, all fixed with regression tests:
+
+| Defect (live data) | Fix |
+|---|---|
+| D&A missing for DHR FY2024+ and all MSFT years: combined D&A no longer tagged | Depreciation + Amortization of intangible assets, marked calculated |
+| DHR dividend yield unavailable: per-share dividends not tagged | Fallback to dividends paid ÷ market cap, basis shown |
+| NVIDIA years named one lower than NVIDIA names them: its naming changed over time, and the conflict reverted every year to the date rule | Most recent filing's label anchors all years |
+| `BRK.B` not found: SEC lists `BRK-B` | Dot-to-hyphen lookup |
+| Next.js 16.4.0 flagged by a security advisory at build | Upgraded to 16.4.6 |
+
+Known limitations from live data:
+- **Banks and insurers** (JPM, BRK) report no operating income; Berkshire has no diluted share count. The FCFF DCF does not fit them; the workspace says so rather than producing a value.
+- **MSFT D&A is understated**: Microsoft's cash-flow D&A line uses a company-specific tag that companyfacts does not include; the calculated fallback (rounded note figures) is labeled with its formula.
+- **Default revenue growth** extrapolates the trailing CAGR for every forecast year, which is unrealistic for hypergrowth companies (NVDA: 88%). It is labeled historical and editable; a fade-to-terminal default is a candidate improvement.
+- The live check runs in CI only when the repository secret `SEC_USER_AGENT` is set.

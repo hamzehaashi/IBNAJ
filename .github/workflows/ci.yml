@@ -23,3 +23,25 @@ jobs:
       - run: npm run test:e2e
         env:
           CI: "true"
+
+  # Verifies the data pipeline against REAL SEC filings. Needs the repository secret
+  # SEC_USER_AGENT ("<App name> <contact email>", as SEC requires); skipped when unset.
+  sec-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Live SEC smoke check
+        env:
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+        run: |
+          if [ -z "$SEC_USER_AGENT" ]; then
+            echo "::notice::SEC_USER_AGENT secret is not set; skipping the live SEC check."
+            exit 0
+          fi
+          npm run sec:smoke -- DHR MSFT AAPL

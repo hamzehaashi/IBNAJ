@@ -93,7 +93,7 @@ export const STATEMENTS: StatementSection[] = [
         ],
       },
       { title: "Investing activities", rows: [{ line: "capex", indent: true, outflow: true }, { line: "cfi", total: true }] },
-      { title: "Financing activities", rows: [{ line: "cff", total: true }] },
+      { title: "Financing activities", rows: [{ line: "dividendsPaid", indent: true, outflow: true }, { line: "cff", total: true }] },
       { title: "Summary", rows: [{ line: "netChangeInCash", total: true }, { line: "freeCashFlow", total: true }] },
     ],
   },

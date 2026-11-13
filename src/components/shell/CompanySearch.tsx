@@ -113,7 +113,6 @@ export function CompanySearch({ autoFocus, large }: { autoFocus?: boolean; large
               >
                 <span className="num w-16 font-semibold text-accent">{r.ticker}</span>
                 <span className="truncate text-fg">{r.name}</span>
-                {r.mode === "demo" && <span className="ml-auto text-[10px] uppercase text-warn">Demo</span>}
               </button>
             </li>
           ))}

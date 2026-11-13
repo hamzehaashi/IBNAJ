@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
-import dhr from "@/lib/data/fixtures/dhr.json";
-import nova from "@/lib/data/fixtures/nova.json";
-import type { DemoFixture } from "@/lib/data/fixture-types";
+import dhr from "@fixtures/sec/dhr.json";
+import nova from "@fixtures/sec/nova.json";
+import type { TestFixture } from "@fixtures/types";
 import { buildStatementSet } from "@/lib/sec/statements";
 import { validateUserPrice } from "@/components/workspace/PriceEditor";
 import { deriveModelDefaults } from "./defaults";
 import { marketMetrics } from "./market";
 
 const sets = (f: unknown) => {
-  const cf = (f as DemoFixture).companyfacts;
+  const cf = (f as TestFixture).companyfacts;
   return { annual: buildStatementSet(cf, "annual"), quarterly: buildStatementSet(cf, "quarterly") };
 };
 
@@ -26,7 +26,7 @@ describe("dividend yield", () => {
     const { annual, quarterly } = sets(nova);
     const m = marketMetrics(50, annual, quarterly);
     expect(m.dividendYield.value).toBeNull();
-    expect(m.dividendYield.reason).toMatch(/No dividends per share reported/);
+    expect(m.dividendYield.reason).toMatch(/No dividends reported in filings/);
   });
 
   it("is unavailable without a price", () => {
@@ -70,5 +70,18 @@ describe("user price validation", () => {
     expect(validateUserPrice("abc", "2026-10-08", "2026-10-09")).toMatch(/Enter a price/);
     expect(validateUserPrice("5000000", "2026-10-08", "2026-10-09")).toMatch(/implausible/);
     expect(validateUserPrice("10", "2026-10-10", "2026-10-09")).toMatch(/future/);
+  });
+});
+
+describe("dividend yield fallback (per-share dividends not tagged, e.g. Danaher)", () => {
+  it("uses latest-year dividends paid ÷ market cap and says so", () => {
+    const { annual, quarterly } = sets(dhr);
+    const last = annual.periods.length - 1;
+    const stripped = { ...annual, lines: { ...annual.lines, dividendsPerShare: annual.lines.dividendsPerShare.map((c) => ({ ...c, value: null, status: "not_reported" as const })) } };
+    const paid = 900e6;
+    stripped.lines.dividendsPaid = annual.lines.dividendsPaid.map((c, i) => (i === last ? { value: paid, status: "reported" as const, sources: [{ taxonomy: "us-gaap", tag: "PaymentsOfDividends", unit: "USD", accn: "x", form: "10-K", filed: "2026-02-01", end: "2025-12-31", value: paid }] } : c));
+    const m = marketMetrics(200, stripped, quarterly);
+    expect(m.dividendYield.value).toBeCloseTo(paid / m.marketCap.value!, 12);
+    expect(m.dividendYield.basis).toMatch(/may include preferred/);
   });
 });

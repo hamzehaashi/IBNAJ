@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
-import dhr from "@/lib/data/fixtures/dhr.json";
-import msft from "@/lib/data/fixtures/msft.json";
-import aapl from "@/lib/data/fixtures/aapl.json";
-import nova from "@/lib/data/fixtures/nova.json";
-import rstd from "@/lib/data/fixtures/rstd.json";
-import type { DemoFixture } from "@/lib/data/fixture-types";
+import dhr from "@fixtures/sec/dhr.json";
+import msft from "@fixtures/sec/msft.json";
+import aapl from "@fixtures/sec/aapl.json";
+import nova from "@fixtures/sec/nova.json";
+import rstd from "@fixtures/sec/rstd.json";
+import type { TestFixture } from "@fixtures/types";
 import type { CompanyFactsJson } from "./types";
 import { detectFiscalQuarters, detectFiscalYears, normalizeCompanyFacts, pickLatest } from "./xbrl";
 import { buildStatementSet } from "./statements";
 import { validateStatements } from "./validation";
 
-const cf = (f: unknown) => (f as DemoFixture).companyfacts;
+const cf = (f: unknown) => (f as TestFixture).companyfacts;
 
 describe("fiscal calendar detection", () => {
   it("DHR: calendar fiscal years labeled by period, not by the filing's fy", () => {
@@ -221,5 +221,78 @@ describe("statements and validation", () => {
     };
     const set = buildStatementSet(facts, "annual");
     expect(validateStatements(set, facts).some((i) => i.check === "Units")).toBe(true);
+  });
+});
+
+describe("component fallbacks found in real filings", () => {
+  const obs = (val: number, start = "2025-01-01", end = "2025-12-31") => ({ start, end, val, accn: "a", fy: 2025, fp: "FY", form: "10-K", filed: "2026-02-15" });
+  const facts = (extra: Record<string, number>): CompanyFactsJson => ({
+    cik: 1,
+    entityName: "Fallback Test",
+    facts: {
+      "us-gaap": Object.fromEntries(
+        Object.entries({ Revenues: 1000, ...extra }).map(([tag, v]) => [tag, { units: { USD: [obs(v)] } }]),
+      ),
+    },
+  });
+
+  it("D&A = Depreciation + intangible amortization when the combined tag is absent (e.g. Danaher FY2024+)", () => {
+    const set = buildStatementSet(facts({ Depreciation: 300, AmortizationOfIntangibleAssets: 200 }), "annual");
+    expect(set.lines.depreciationAmortization[0]).toMatchObject({ value: 500, status: "calculated" });
+    expect(set.lines.depreciationAmortization[0]!.formula).toMatch(/Depreciation \+ Amortization/);
+  });
+
+  it("prefers the reported combined D&A and never combines a partial set", () => {
+    expect(buildStatementSet(facts({ DepreciationDepletionAndAmortization: 450, Depreciation: 300, AmortizationOfIntangibleAssets: 200 }), "annual").lines.depreciationAmortization[0]).toMatchObject({ value: 450, status: "reported" });
+    expect(buildStatementSet(facts({ Depreciation: 300 }), "annual").lines.depreciationAmortization[0]!.value).toBeNull();
+  });
+});
+
+describe("fiscal-year labels when some years have no filing label (found in NVIDIA's real filings)", () => {
+  const rev = (start: string, end: string, fy: number | null, filed: string) => ({ start, end, val: 100, accn: `a-${end}`, fy, fp: "FY", form: "10-K", filed });
+  it("fills gaps from labeled neighbours instead of reverting every year to the date rule", () => {
+    const facts: CompanyFactsJson = {
+      cik: 1,
+      entityName: "Jan FYE labeled forward",
+      facts: {
+        "us-gaap": {
+          Revenues: {
+            units: {
+              USD: [
+                rev("2023-01-30", "2024-01-28", null, "2025-03-01"), // only ever reported as a comparative (>180 days later)
+                rev("2024-01-29", "2025-01-26", 2025, "2025-02-26"),
+                rev("2025-01-27", "2026-01-25", 2026, "2026-02-25"),
+              ],
+            },
+          },
+        },
+      },
+    };
+    expect(detectFiscalYears(facts).map((y) => y.key)).toEqual(["FY2024", "FY2025", "FY2026"]);
+  });
+});
+
+describe("fiscal-year labels when a company changed its naming (NVIDIA's real filings)", () => {
+  const rev = (start: string, end: string, fy: number, filed: string) => ({ start, end, val: 100, accn: `a-${end}`, fy, fp: "FY", form: "10-K", filed });
+  it("numbers every year from the most recent filing's label, ignoring conflicting older labels", () => {
+    const facts: CompanyFactsJson = {
+      cik: 1,
+      entityName: "Naming changed",
+      facts: {
+        "us-gaap": {
+          Revenues: {
+            units: {
+              USD: [
+                rev("2009-01-26", "2010-01-31", 2010, "2010-03-18"),
+                rev("2010-02-01", "2011-01-30", 2010, "2011-03-16"), // old convention: same label twice
+                rev("2024-01-29", "2025-01-26", 2025, "2025-02-26"),
+                rev("2025-01-27", "2026-01-25", 2026, "2026-02-25"),
+              ],
+            },
+          },
+        },
+      },
+    };
+    expect(detectFiscalYears(facts).map((y) => y.key)).toEqual(["FY2010", "FY2011", "FY2025", "FY2026"]);
   });
 });

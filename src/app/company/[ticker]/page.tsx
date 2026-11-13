@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useModel, useWorkspace } from "@/components/workspace/context";
-import { Badge, Card, EmptyState, Kpi, Tip } from "@/components/ui/primitives";
+import { Card, EmptyState, Kpi, Tip } from "@/components/ui/primitives";
 import { marketMetrics, type Derived } from "@/lib/finance/market";
 import { freshnessLabel, PriceEditor } from "@/components/workspace/PriceEditor";
 import type { LineId } from "@/lib/sec/statements";
@@ -54,7 +54,7 @@ export default function OverviewPage() {
       fcf: annual.lines.freeCashFlow[i]?.value != null ? annual.lines.freeCashFlow[i]!.value! / 1e6 : null,
       margin: rev && oi !== null ? (oi / rev) * 100 : null,
     };
-  });
+  }).slice(-10); // EDGAR can return 15+ years; the overview shows the last ten (all years are on the statements page)
   const last = annual.periods.length - 1;
   const v = (line: LineId) => annual.lines[line]?.[last]?.value ?? null;
 
@@ -67,7 +67,6 @@ export default function OverviewPage() {
             <span className="num text-accent">{profile.ticker}</span>
             {profile.exchange && <span>{profile.exchange}</span>}
             {profile.industry && <span>· {profile.industry}</span>}
-            {dataset.meta.mode === "demo" && <Badge tone="warn">Synthetic data</Badge>}
           </div>
         </div>
         <div className="text-[11px] text-fg-2">Latest fiscal period: {annual.periods[last]?.label ?? "—"} (ended {annual.periods[last] ? dateLabel(annual.periods[last]!.end) : "—"})</div>

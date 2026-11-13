@@ -2,7 +2,7 @@ import type { StatementSet } from "@/lib/sec/statements";
 import type { ValidationIssue } from "@/lib/sec/validation";
 import type { RiskFreeResult } from "@/lib/rates/treasury";
 
-export type DataMode = "demo" | "sec";
+export type DataMode = "sec";
 
 export interface CompanyProfile {
   ticker: string;
@@ -26,7 +26,7 @@ export interface MarketSnapshot {
   currency: string;
   source: string;
   /** Never "live": Caldun has no real-time feed. */
-  freshness: "end_of_day" | "delayed" | "synthetic" | "user_entered";
+  freshness: "end_of_day" | "delayed" | "user_entered";
   label: string;
 }
 
@@ -37,7 +37,6 @@ export interface DatasetMeta {
   retrievedAt: number;
   stale: boolean;
   staleReason?: string;
-  notice?: string;
   /** ISO date used as the default valuation date (server clock, deterministic per request). */
   valuationDate: string;
 }

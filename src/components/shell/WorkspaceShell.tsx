@@ -158,7 +158,7 @@ function ExportMenu() {
     return () => document.removeEventListener("mousedown", close);
   }, []);
   const t = dataset.profile.ticker;
-  const meta = { company: `${dataset.profile.name} (${t})`, source: dataset.meta.source, notice: dataset.meta.notice };
+  const meta = { company: `${dataset.profile.name} (${t})`, source: dataset.meta.source };
   const items = [
     { label: "Annual statements (CSV)", run: () => downloadText(`${t}-annual-statements.csv`, statementsCsv(dataset.annual, STATEMENT_EXPORT_LINES, meta)) },
     { label: "Quarterly statements (CSV)", run: () => downloadText(`${t}-quarterly-statements.csv`, statementsCsv(dataset.quarterly, STATEMENT_EXPORT_LINES, meta)) },
@@ -197,7 +197,6 @@ function ExportMenu() {
 }
 
 function freshness(dataset: ReturnType<typeof useWorkspace>["dataset"]) {
-  if (dataset.meta.mode === "demo") return { tone: "warn" as const, label: "Demo data", tip: dataset.meta.notice ?? "Synthetic demonstration data." };
   if (dataset.meta.stale) return { tone: "warn" as const, label: "Cached · stale", tip: `Upstream unavailable; showing cached data retrieved ${new Date(dataset.meta.retrievedAt).toLocaleString()}. ${dataset.meta.staleReason ?? ""}` };
   return { tone: "pos" as const, label: "SEC filings", tip: `Retrieved ${new Date(dataset.meta.retrievedAt).toLocaleString()} from ${dataset.meta.source}.` };
 }
@@ -286,11 +285,6 @@ function DataNotices() {
   const warnings = dataset.validation.filter((v) => v.severity === "warning").length;
   return (
     <>
-      {dataset.meta.mode === "demo" && (
-        <div role="note" className="border-b border-warn/30 bg-warn/10 px-4 py-1.5 text-[12px] text-warn">
-          <strong>Demonstration data.</strong> All figures for {dataset.profile.ticker} are synthetic fixtures, not reported financials. Configure SEC access to load filed data.
-        </div>
-      )}
       {(errors > 0 || warnings > 0) && (
         <div role="status" className="border-b border-line bg-bg-2 px-4 py-1 text-[11.5px] text-fg-2">
           Data checks: {errors > 0 && <span className="text-neg">{errors} error(s)</span>} {warnings > 0 && <span className="text-warn">{warnings} warning(s)</span>} — see Financial Statements → Data checks.

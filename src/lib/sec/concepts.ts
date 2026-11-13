@@ -40,7 +40,10 @@ export type MetricId =
   | "totalEquity"
   | "liabilitiesAndEquity"
   | "depreciationAmortization"
+  | "depreciation"
+  | "amortizationIntangibles"
   | "stockBasedComp"
+  | "dividendsPaid"
   | "cfo"
   | "capex"
   | "cfi"
@@ -145,6 +148,16 @@ export const METRICS: Record<MetricId, MetricDefinition> = {
   depreciationAmortization: {
     id: "depreciationAmortization", label: "Depreciation & amortization", statement: "cashflow", periodType: "duration", unit: "USD", additive: true,
     concepts: g("DepreciationDepletionAndAmortization", "DepreciationAndAmortization", "DepreciationAmortizationAndAccretionNet"),
+  },
+  depreciation: { id: "depreciation", label: "Depreciation", statement: "cashflow", periodType: "duration", unit: "USD", additive: true, concepts: g("Depreciation") },
+  amortizationIntangibles: {
+    id: "amortizationIntangibles", label: "Amortization of intangible assets", statement: "cashflow", periodType: "duration", unit: "USD", additive: true,
+    concepts: g("AmortizationOfIntangibleAssets"),
+  },
+  dividendsPaid: {
+    id: "dividendsPaid", label: "Dividends paid", statement: "cashflow", periodType: "duration", unit: "USD", additive: true,
+    concepts: g("PaymentsOfDividendsCommonStock", "PaymentsOfDividends"),
+    signNote: "Reported as a positive payment amount; presented as a cash outflow. PaymentsOfDividends may include preferred dividends.",
   },
   stockBasedComp: { id: "stockBasedComp", label: "Stock-based compensation", statement: "cashflow", periodType: "duration", unit: "USD", additive: true, concepts: g("ShareBasedCompensation") },
   cfo: {

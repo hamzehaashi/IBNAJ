@@ -21,7 +21,7 @@ export function validateUserPrice(price: string, asOf: string, now = today()): s
 }
 
 export const freshnessLabel = (f: string) =>
-  ({ user_entered: "User-entered", synthetic: "Synthetic", end_of_day: "End-of-day", delayed: "Delayed" })[f] ?? f;
+  ({ user_entered: "User-entered", end_of_day: "End-of-day", delayed: "Delayed" })[f] ?? f;
 
 /**
  * Shows the workspace price and lets the user enter or clear their own. A user-entered

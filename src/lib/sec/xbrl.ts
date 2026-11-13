@@ -163,12 +163,19 @@ export function detectFiscalYears(cf: CompanyFactsJson, opts: NormalizeOptions =
   }
   kept.sort((a, b) => (a.end < b.end ? -1 : 1));
 
-  let periods = kept.map((e) => {
-    const filingLabel = [...e.labels.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
-    const fiscalYear = filingLabel ?? fiscalYearFromEnd(e.end);
-    return { e, fiscalYear };
-  });
-  // Filing labels must be unique and increasing; otherwise use the date rule for all periods.
+  // The most recent filing's label is the authority for the company's current naming
+  // convention; every other year is numbered from it by whole years between period ends.
+  // Older filings can disagree (NVIDIA labelled its Jan-2011 year "2010" but its Jan-2026
+  // year "2026"), and trusting each period's own label would produce duplicates.
+  const filingLabels = kept.map((e) => [...e.labels.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]);
+  let anchor = filingLabels.length - 1;
+  while (anchor >= 0 && filingLabels[anchor] === undefined) anchor--;
+  const yearsBetween = (a: string, b: string) => Math.round((toTime(a) - toTime(b)) / (365.2425 * DAY_MS));
+  let periods = kept.map((e) => ({
+    e,
+    fiscalYear: anchor >= 0 ? filingLabels[anchor]! + yearsBetween(e.end, kept[anchor]!.end) : fiscalYearFromEnd(e.end),
+  }));
+  // Labels must be unique and increasing (e.g. after an irregular gap); otherwise use the date rule for all periods.
   const labels = periods.map((p) => p.fiscalYear);
   const consistent = labels.every((l, i) => i === 0 || l > labels[i - 1]!);
   if (!consistent) periods = periods.map((p) => ({ ...p, fiscalYear: fiscalYearFromEnd(p.e.end) }));

@@ -12,10 +12,25 @@
  *    and flagged so the UI can disclose its age.
  */
 
+/**
+ * SEC hosts. `SEC_BASE_URL_OVERRIDE` points both at a local mock server for end-to-end
+ * tests; it is refused for anything but localhost so it cannot redirect real traffic.
+ */
+function secHosts(): { www: string; data: string } {
+  const override = process.env.SEC_BASE_URL_OVERRIDE?.trim();
+  if (override) {
+    if (!/^http:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?$/.test(override)) {
+      throw new SecConfigError("SEC_BASE_URL_OVERRIDE may only point at a local test server (http://localhost:PORT).");
+    }
+    return { www: override, data: override };
+  }
+  return { www: "https://www.sec.gov", data: "https://data.sec.gov" };
+}
+
 export const SEC_ENDPOINTS = {
-  tickers: "https://www.sec.gov/files/company_tickers.json",
-  submissions: (cik: string) => `https://data.sec.gov/submissions/CIK${cik}.json`,
-  companyFacts: (cik: string) => `https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`,
+  tickers: () => `${secHosts().www}/files/company_tickers.json`,
+  submissions: (cik: string) => `${secHosts().data}/submissions/CIK${cik}.json`,
+  companyFacts: (cik: string) => `${secHosts().data}/api/xbrl/companyfacts/CIK${cik}.json`,
 };
 
 export const padCik = (cik: number | string) => String(cik).replace(/^0+/, "").padStart(10, "0");

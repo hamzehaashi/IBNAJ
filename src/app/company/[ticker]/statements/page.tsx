@@ -162,7 +162,7 @@ export default function StatementsPage() {
       periods: indices.map((i) => set.periods[i]!),
       lines: Object.fromEntries(Object.entries(set.lines).map(([k, v]) => [k, indices.map((i) => v[i]!)])) as StatementSet["lines"],
     };
-    downloadText(`${dataset.profile.ticker}-${section.id}-${freq}.csv`, statementsCsv(sliced, lines, { company: `${dataset.profile.name} (${dataset.profile.ticker})`, source: dataset.meta.source, notice: dataset.meta.notice }));
+    downloadText(`${dataset.profile.ticker}-${section.id}-${freq}.csv`, statementsCsv(sliced, lines, { company: `${dataset.profile.name} (${dataset.profile.ticker})`, source: dataset.meta.source }));
   };
 
   const selCell = selected ? set.lines[selected.line]?.[selected.i] : undefined;
