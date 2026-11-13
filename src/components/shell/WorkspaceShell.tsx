@@ -30,8 +30,8 @@ import { useModel, useWorkspace } from "@/components/workspace/context";
 import { Badge, Button, cx, Tip } from "@/components/ui/primitives";
 import { downloadText, modelCsv, statementsCsv } from "@/lib/export";
 import { STATEMENT_EXPORT_LINES } from "@/components/workspace/statement-layout";
-import { dateLabel, usd } from "@/lib/format";
 import { CompanySearch } from "./CompanySearch";
+import { PriceEditor } from "@/components/workspace/PriceEditor";
 
 interface NavItem {
   href: string;
@@ -149,7 +149,7 @@ export function ThemeToggle() {
 
 function ExportMenu() {
   const { dataset } = useWorkspace();
-  const { state, result } = useModel();
+  const { state, valuation, result } = useModel();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -158,11 +158,11 @@ function ExportMenu() {
     return () => document.removeEventListener("mousedown", close);
   }, []);
   const t = dataset.profile.ticker;
-  const meta = { company: `${dataset.profile.name} (${t})`, source: dataset.meta.source, notice: dataset.meta.notice };
+  const meta = { company: `${dataset.profile.name} (${t})`, source: dataset.meta.source };
   const items = [
     { label: "Annual statements (CSV)", run: () => downloadText(`${t}-annual-statements.csv`, statementsCsv(dataset.annual, STATEMENT_EXPORT_LINES, meta)) },
     { label: "Quarterly statements (CSV)", run: () => downloadText(`${t}-quarterly-statements.csv`, statementsCsv(dataset.quarterly, STATEMENT_EXPORT_LINES, meta)) },
-    ...(state && result ? [{ label: "Forecast & DCF model (CSV)", run: () => downloadText(`${t}-dcf-model.csv`, modelCsv(meta.company, state.forecast, state.valuation, result)) }] : []),
+    ...(state && result ? [{ label: "Forecast & DCF model (CSV)", run: () => downloadText(`${t}-dcf-model.csv`, modelCsv(meta.company, state.forecast, valuation ?? state.valuation, result)) }] : []),
   ];
   return (
     <div ref={ref} className="relative">
@@ -197,7 +197,6 @@ function ExportMenu() {
 }
 
 function freshness(dataset: ReturnType<typeof useWorkspace>["dataset"]) {
-  if (dataset.meta.mode === "demo") return { tone: "warn" as const, label: "Demo data", tip: dataset.meta.notice ?? "Synthetic demonstration data." };
   if (dataset.meta.stale) return { tone: "warn" as const, label: "Cached · stale", tip: `Upstream unavailable; showing cached data retrieved ${new Date(dataset.meta.retrievedAt).toLocaleString()}. ${dataset.meta.staleReason ?? ""}` };
   return { tone: "pos" as const, label: "SEC filings", tip: `Retrieved ${new Date(dataset.meta.retrievedAt).toLocaleString()} from ${dataset.meta.source}.` };
 }
@@ -205,7 +204,6 @@ function freshness(dataset: ReturnType<typeof useWorkspace>["dataset"]) {
 function TopBar() {
   const { dataset } = useWorkspace();
   const { save, undo, redo, canUndo, canRedo, dirty, savedAt } = useModel();
-  const m = dataset.market;
   const f = freshness(dataset);
 
   useEffect(() => {
@@ -252,17 +250,9 @@ function TopBar() {
         <span className="num text-[15px] font-semibold text-accent">{dataset.profile.ticker}</span>
         <span className="hidden truncate text-fg-2 lg:inline">{dataset.profile.name}</span>
       </div>
-      <div className="flex items-baseline gap-2">
-        {m ? (
-          <>
-            <span className="num text-[15px] font-semibold">{usd(m.price)}</span>
-            <Tip text={`${m.label}. As of ${dateLabel(m.asOf)} (${m.freshness.replace("_", "-")}, not live). Source: ${m.source}. Price change requires a licensed market-data feed (not configured).`} />
-          </>
-        ) : (
-          <span className="text-fg-2">
-            No price <Tip text="No licensed market-data provider is configured. Enter a reference price in the DCF module." />
-          </span>
-        )}
+      <div className="flex items-center gap-1 text-[13px]">
+        <PriceEditor compact />
+        <Tip text="Caldun has no licensed market-data feed, so prices are never live. Enter the price you want to use; it applies to every module and is stored in this browser. Price change requires a licensed feed." />
       </div>
       <Badge>{dataset.profile.reportingCurrency}</Badge>
       <Badge tone={f.tone} title={f.tip}>
@@ -295,11 +285,6 @@ function DataNotices() {
   const warnings = dataset.validation.filter((v) => v.severity === "warning").length;
   return (
     <>
-      {dataset.meta.mode === "demo" && (
-        <div role="note" className="border-b border-warn/30 bg-warn/10 px-4 py-1.5 text-[12px] text-warn">
-          <strong>Demonstration data.</strong> All figures for {dataset.profile.ticker} are synthetic fixtures, not reported financials. Configure SEC access to load filed data.
-        </div>
-      )}
       {(errors > 0 || warnings > 0) && (
         <div role="status" className="border-b border-line bg-bg-2 px-4 py-1 text-[11.5px] text-fg-2">
           Data checks: {errors > 0 && <span className="text-neg">{errors} error(s)</span>} {warnings > 0 && <span className="text-warn">{warnings} warning(s)</span>} — see Financial Statements → Data checks.

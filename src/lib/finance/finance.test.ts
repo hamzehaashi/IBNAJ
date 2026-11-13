@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import dhr from "@/lib/data/fixtures/dhr.json";
-import nova from "@/lib/data/fixtures/nova.json";
-import type { DemoFixture } from "@/lib/data/fixture-types";
+import dhr from "@fixtures/sec/dhr.json";
+import nova from "@fixtures/sec/nova.json";
+import type { TestFixture } from "@fixtures/types";
 import { buildStatementSet } from "@/lib/sec/statements";
 import { runDcf, terminalValuePerpetuity } from "./dcf";
 import { deriveModelDefaults } from "./defaults";
@@ -165,7 +165,7 @@ describe("DCF", () => {
 });
 
 describe("integrated model from fixtures", () => {
-  const facts = (dhr as unknown as DemoFixture).companyfacts;
+  const facts = (dhr as unknown as TestFixture).companyfacts;
   const annual = buildStatementSet(facts, "annual");
   const quarterly = buildStatementSet(facts, "quarterly");
   const defaults = deriveModelDefaults({ annual, quarterly, marketPrice: 214.5, valuationDate: "2026-10-09" });
@@ -231,7 +231,7 @@ describe("integrated model from fixtures", () => {
   });
 
   it("missing-metric company still initializes, with gaps labeled", () => {
-    const nf = (nova as unknown as DemoFixture).companyfacts;
+    const nf = (nova as unknown as TestFixture).companyfacts;
     const d = deriveModelDefaults({ annual: buildStatementSet(nf, "annual"), marketPrice: null, valuationDate: "2026-10-09" });
     expect(d.sources.rndPct!.kind).toBe("illustrative");
     expect(d.sources["bridge.debt"]!.kind).toBe("reported");
@@ -242,7 +242,7 @@ describe("integrated model from fixtures", () => {
 });
 
 describe("ratios", () => {
-  const set = buildStatementSet((dhr as unknown as DemoFixture).companyfacts, "annual");
+  const set = buildStatementSet((dhr as unknown as TestFixture).companyfacts, "annual");
   const ratios = computeRatios(set);
   const r = (id: string) => ratios.find((x) => x.id === id)!;
 
@@ -258,7 +258,7 @@ describe("ratios", () => {
   });
 
   it("missing inputs produce reasons, not zeros", () => {
-    const novaSet = buildStatementSet((nova as unknown as DemoFixture).companyfacts, "annual");
+    const novaSet = buildStatementSet((nova as unknown as TestFixture).companyfacts, "annual");
     const inv = computeRatios(novaSet).find((x) => x.id === "inventoryTurnover")!;
     expect(inv.points.every((p) => p.value === null)).toBe(true);
     expect(inv.points.at(-1)!.reason).toMatch(/inventory/);

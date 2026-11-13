@@ -9,13 +9,15 @@ async function setInput(page: Page, testId: string, value: string) {
   await input.press("Enter");
 }
 
-test("search for DHR and land on the labeled demo workspace", async ({ page }) => {
+test("search for DHR and land on the SEC-sourced workspace", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("searchbox").or(page.getByLabel("Search companies by ticker or name")).first().fill("DHR");
   await page.getByRole("option", { name: /DHR/ }).click();
   await expect(page).toHaveURL(/\/company\/DHR$/);
   await expect(page.getByRole("heading", { name: "Danaher Corporation" })).toBeVisible();
-  await expect(page.getByText("Demonstration data.", { exact: false }).first()).toBeVisible();
+  await expect(page.getByText("SEC filings").first()).toBeVisible();
+  await expect(page.getByText(/demonstration|synthetic/i)).toHaveCount(0);
+  await expect(page.getByText("No price").first()).toBeVisible(); // no provider price; never an estimate
   await expect(page.getByText("Price chart unavailable")).toBeVisible();
 });
 
@@ -100,5 +102,41 @@ test("company with missing metrics shows unavailable values, not zeros", async (
 test("unknown tickers show a clear error", async ({ page }) => {
   await page.goto("/company/ZZZZ");
   await expect(page.getByRole("heading", { name: "Unable to load ZZZZ" })).toBeVisible();
-  await expect(page.getByText(/Demo tickers/)).toBeVisible();
+  await expect(page.getByText(/No SEC registrant found for ticker ZZZZ/)).toBeVisible();
+});
+
+test("a user-entered price flows through every module, persists, and can be cleared", async ({ page }) => {
+  await page.goto("/company/DHR/dcf");
+  const upsideBefore = await page.getByText("Implied upside").locator("..").locator("..").textContent();
+
+  await page.getByTestId("price-edit").first().click();
+  await page.getByTestId("price-input").fill("0");
+  await page.getByTestId("price-save").click();
+  await expect(page.getByRole("alert").filter({ hasText: "greater than zero" })).toBeVisible();
+  await page.getByTestId("price-input").fill("300");
+  await page.getByTestId("price-date").fill("2026-10-08");
+  await page.getByTestId("price-save").click();
+
+  await expect(page.getByTestId("workspace-price").first()).toHaveText("$300.00");
+  await expect(page.getByText("User-entered").first()).toBeVisible();
+  await expect(page.getByText("Implied upside").locator("..").locator("..")).not.toHaveText(upsideBefore ?? "");
+
+  await page.reload();
+  await expect(page.getByTestId("workspace-price").first()).toHaveText("$300.00");
+
+  await page.getByRole("link", { name: "Overview" }).click();
+  const dividendRow = page.locator("div", { has: page.getByText("Dividend yield", { exact: true }) }).last();
+  await expect(dividendRow).toContainText("%");
+  await expect(page.getByTestId("risk-free")).toContainText("Unavailable"); // network lookups disabled in E2E
+
+  await page.getByTestId("price-clear").first().click();
+  await expect(page.getByTestId("workspace-price")).toHaveCount(0);
+  await expect(page.getByText("No price").first()).toBeVisible();
+});
+
+test("dividend yield is unavailable, not zero, for a company that reports no dividend", async ({ page }) => {
+  await page.goto("/company/NOVA");
+  const dividendRow = page.locator("div", { has: page.getByText("Dividend yield", { exact: true }) }).last();
+  await expect(dividendRow).toContainText("—");
+  await expect(dividendRow).not.toContainText("0.00%");
 });

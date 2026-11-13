@@ -80,6 +80,7 @@ export function Button({
   className?: string;
   "aria-label"?: string;
   "aria-pressed"?: boolean;
+  "data-testid"?: string;
 }) {
   const v = {
     primary: "bg-accent text-[#0b0f17] hover:brightness-110 font-semibold",

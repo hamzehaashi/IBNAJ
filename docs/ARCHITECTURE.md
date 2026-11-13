@@ -11,7 +11,7 @@ PostgreSQL + ORM, Redis, TanStack Query/Table, background jobs, Python services.
 ## Layers
 
 ```
-SEC EDGAR / fixtures ──► sec/client  (throttle · cache · retry · diagnose)
+SEC EDGAR ──► sec/client  (throttle · cache · retry · diagnose)
                           │
                           ▼
                         sec/xbrl      raw facts → period-correct cells with provenance
@@ -52,6 +52,9 @@ revenue growth on the Forecasting page shows up on the DCF page without a second
 | Non-additive metrics | EPS and weighted shares are never derived by subtraction |
 | Missing values | `null` + status; calculations with missing required inputs are `unavailable` |
 | Tag priority | Per period, first concept in `concepts.ts` order; chosen tag recorded |
+| Fiscal-year names | The most recent 10-K's `fy` is the authority; other years are numbered from it by whole years between period ends (companies change conventions: NVIDIA's older filings named years one lower) |
+| Split D&A | When combined D&A is not tagged, Depreciation + Amortization of intangible assets, marked calculated (e.g. Danaher FY2024+) |
+| Dividend yield | Dividends declared per share ÷ price; if per-share is not tagged, dividends paid ÷ market cap, with the basis shown |
 
 ## Valuation conventions (`src/lib/finance/dcf.ts`)
 
@@ -67,9 +70,21 @@ revenue growth on the Forecasting page shows up on the DCF page without a second
 
 The client (`src/lib/sec/client.ts`) is the only path to SEC and runs server-side only.
 
-- `SEC_USER_AGENT` must contain a contact email; without it, Caldun runs in labeled demo mode and makes no SEC calls.
+- `SEC_USER_AGENT` must contain a contact email; without it, Caldun returns a setup error and makes no SEC calls. There is no synthetic fallback.
+- `SEC_BASE_URL_OVERRIDE` (tests only) points the client at the local mock SEC server used by end-to-end tests; anything but `http://localhost:PORT` is refused.
 - 403 is never retried automatically. It returns a diagnosis: missing User-Agent, a lockout after exceeding 10 req/s, or a blocked hosting IP range.
 - **If the deployment host's egress is blocked by SEC** (common with shared serverless IP pools), move ingestion to a small separately hosted worker with a stable egress IP. That worker writes normalized datasets to Postgres or object storage, and the web app reads from there. The provider interface (`getCompanyDataset`) is the seam for that change.
+
+## Free market inputs
+
+| Input | Source | Notes |
+|---|---|---|
+| Risk-free rate | U.S. Treasury daily par yield curve CSV, 10-year tenor (`src/lib/rates/treasury.ts`) | Public domain. Fetched server-side, cached 6 h (failures 10 min). Falls back to the labeled illustrative 4.25% with the reason |
+| Dividends | SEC XBRL `CommonStockDividendsPerShareDeclared` / `…CashPaid` | Yield = latest fiscal-year DPS ÷ price; unavailable (not zero) when not reported or not current |
+| Price | User-entered per company, with an "as of" date (`prices` in the workspace store) | Persisted in the browser; overrides the dataset snapshot; always labeled "User-entered"; never presented as live |
+
+The price is workspace-level, not part of a saved model: `useModel` applies it as the engine's
+`referencePrice`, so every module and export uses the same value.
 
 ## Security
 

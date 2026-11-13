@@ -59,6 +59,21 @@ export function buildStatementSet(cf: CompanyFactsJson, frequency: "annual" | "q
         })(),
   );
 
+  // D&A: many filers stopped tagging the combined total and report depreciation and
+  // intangible amortization separately (e.g. Danaher from FY2024). Combine them only when
+  // the total is absent and BOTH components are reported; the result is marked calculated.
+  lines.depreciationAmortization = lines.depreciationAmortization.map((cell, i) => {
+    if (cell.value !== null) return cell;
+    const calc = combine(
+      lines,
+      [{ line: "depreciation", sign: 1 }, { line: "amortizationIntangibles", sign: 1 }],
+      i,
+      "Depreciation + Amortization of intangible assets (combined D&A not tagged; may exclude other amortization, e.g. finance-lease assets)",
+      { depreciation: "depreciation", amortizationIntangibles: "intangible amortization" },
+    );
+    return calc.value !== null ? calc : cell;
+  });
+
   lines.ebitda = idx.map((i) =>
     combine(lines, [{ line: "operatingIncome", sign: 1 }, { line: "depreciationAmortization", sign: 1 }], i, "Operating income + D&A (from cash flow statement)", {
       operatingIncome: "operating income",

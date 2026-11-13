@@ -26,8 +26,19 @@ interface TickerWorkspace {
   lastAt: number;
 }
 
+/** A price the user typed in. Persisted immediately; never presented as market data. */
+export interface UserPrice {
+  price: number;
+  /** ISO date the price applies to. */
+  asOf: string;
+  enteredAt: number;
+}
+
 interface WorkspaceStore {
   workspaces: Record<string, TickerWorkspace>;
+  prices: Record<string, UserPrice>;
+  setPrice: (ticker: string, price: number, asOf: string) => void;
+  clearPrice: (ticker: string) => void;
   saved: Record<string, { state: ModelState; savedAt: number }>;
   recent: string[];
   ensure: (ticker: string, defaults: ModelState) => void;
@@ -49,6 +60,14 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   persist(
     (set, get) => ({
       workspaces: {},
+      prices: {},
+      setPrice: (ticker, price, asOf) => set((s) => ({ prices: { ...s.prices, [ticker]: { price, asOf, enteredAt: Date.now() } } })),
+      clearPrice: (ticker) =>
+        set((s) => {
+          const { [ticker]: _removed, ...rest } = s.prices;
+          void _removed;
+          return { prices: rest };
+        }),
       saved: {},
       recent: [],
       ensure: (ticker, defaults) => {
@@ -103,7 +122,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
       name: "caldun-workspace",
       version: STORE_VERSION,
       storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ saved: s.saved, recent: s.recent }),
+      partialize: (s) => ({ saved: s.saved, recent: s.recent, prices: s.prices }),
       skipHydration: true,
     },
   ),

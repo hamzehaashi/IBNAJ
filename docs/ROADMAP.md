@@ -9,7 +9,8 @@ until the previous phase's core acceptance tests pass.
 - [x] SEC client with compliant throttling, caching, retries and 403 diagnosis
 - [x] XBRL normalization: fiscal calendars, instant vs duration, YTD derivation, restatements, point-in-time
 - [x] Data validation checks
-- [x] Deterministic fixtures: DHR (calendar FY), MSFT (June FY), AAPL (52/53-week), NOVA (missing metrics), RSTD (restatement)
+- [x] Deterministic test fixtures (test-only): DHR (calendar FY), MSFT (June FY), AAPL (52/53-week), NOVA (missing metrics), RSTD (restatement)
+- [x] Real SEC data only in the app; verified on live filings (see AUDIT.md § Real SEC data)
 - [x] Unit, integration and E2E tests
 
 ## Phase 1 — Interactive company workspace (partially delivered)
@@ -17,9 +18,18 @@ until the previous phase's core acceptance tests pass.
 Delivered: app shell, global search (⌘K), overview, statements (annual/quarterly, common-size,
 YoY, source inspector, CSV), ratio analysis, responsive layout, dark/light themes.
 
+Delivered (free data, step 1 of market data):
+- [x] Sourced risk-free rate: 10-year U.S. Treasury par yield (public domain), with illustrative fallback and reason
+- [x] Dividend yield from SEC-reported dividends declared per share
+- [x] User-entered price per company (labeled, dated, persisted locally) driving market cap, EV, multiples, dividend yield and DCF upside
+
 Remaining:
-- [ ] **Licensed market-data provider** (price, history, beta, volume, dividends). Evaluate licensing, redistribution and cost first. Unblocks the price chart (1D–MAX, crosshair, index comparison).
-- [ ] Verify live SEC mode end to end from a deployment whose egress SEC accepts.
+- [ ] **Licensed market-data provider with display rights** (price history, beta, volume, 52-week range). Unblocks the price chart (1D–MAX, crosshair, index comparison). Recommended first candidate: Tiingo commercial agreement.
+- [ ] Verify the Treasury endpoint from a deployment (blocked from the build sandbox).
+- [x] Live SEC data verified end to end (from the dev sandbox; CI job `sec-live` once the secret is set)
+- [ ] Verify SEC accepts the production host's egress IPs after deployment
+- [ ] Valuation models for banks and insurers (FCFF DCF does not fit)
+- [ ] Revenue-growth default that fades toward terminal growth
 - [ ] Business description extraction from 10-K Item 1.
 - [ ] TanStack Table (column resizing, virtualization) for long quarterly histories.
 - [ ] Excel (.xlsx) export.

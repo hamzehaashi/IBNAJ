@@ -38,7 +38,7 @@ export const STATEMENTS: StatementSection[] = [
         title: "Below the line",
         rows: [{ line: "interestExpense", indent: true }, { line: "pretaxIncome" }, { line: "incomeTax", indent: true }, { line: "netIncome", total: true }],
       },
-      { title: "Per share", rows: [{ line: "epsDiluted", kind: "perShare" }, { line: "dilutedShares", kind: "shares" }] },
+      { title: "Per share", rows: [{ line: "epsDiluted", kind: "perShare" }, { line: "dividendsPerShare", kind: "perShare" }, { line: "dilutedShares", kind: "shares" }] },
     ],
   },
   {
@@ -93,7 +93,7 @@ export const STATEMENTS: StatementSection[] = [
         ],
       },
       { title: "Investing activities", rows: [{ line: "capex", indent: true, outflow: true }, { line: "cfi", total: true }] },
-      { title: "Financing activities", rows: [{ line: "cff", total: true }] },
+      { title: "Financing activities", rows: [{ line: "dividendsPaid", indent: true, outflow: true }, { line: "cff", total: true }] },
       { title: "Summary", rows: [{ line: "netChangeInCash", total: true }, { line: "freeCashFlow", total: true }] },
     ],
   },
